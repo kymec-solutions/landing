@@ -14,6 +14,7 @@ export default function Header() {
     { name: t.nav.team, href: '#team' },
     { name: t.nav.contact, href: '#contact' },
   ];
+  const homeHref = language === 'es' ? '/es/' : '/en/';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -33,7 +34,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         {/* Logo with hover animation */}
         <motion.a 
-          href="#"
+          href={homeHref}
           className="text-2xl font-bold tracking-tighter text-white group"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}

@@ -48,25 +48,53 @@ const isHtmlRequest = request => {
   return accept.includes('text/html');
 };
 
+const getPathLanguage = pathname => {
+  if (pathname === '/es' || pathname.startsWith('/es/')) {
+    return 'es';
+  }
+  if (pathname === '/en' || pathname.startsWith('/en/')) {
+    return 'en';
+  }
+  return null;
+};
+
+const shouldRedirectToLanguage = pathname => pathname === '/' || pathname === '/index.html';
+
+const buildLanguageCookie = language =>
+  `${languageCookie}=${encodeURIComponent(language)}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+
 export default {
   async fetch(request) {
-    const cookieHeader = request.headers.get('Cookie') || '';
-    if (!isHtmlRequest(request) || getCookieValue(cookieHeader, languageCookie)) {
+    if (!isHtmlRequest(request)) {
       return fetch(request);
     }
 
+    const cookieHeader = request.headers.get('Cookie') || '';
+    const cookieLanguage = getCookieValue(cookieHeader, languageCookie);
+    const url = new URL(request.url);
+    const pathLanguage = getPathLanguage(url.pathname);
     const country =
       (request.cf && request.cf.country) || request.headers.get('CF-IPCountry') || '';
-    const language = spanishCountries.has(country) ? 'es' : 'en';
+    const geoLanguage = spanishCountries.has(country) ? 'es' : 'en';
+    const language = pathLanguage || cookieLanguage || geoLanguage;
+    const shouldSetCookie = !cookieLanguage || (pathLanguage && pathLanguage !== cookieLanguage);
+
+    if (!pathLanguage && shouldRedirectToLanguage(url.pathname)) {
+      url.pathname = `/${language}/`;
+      const headers = new Headers({ Location: url.toString() });
+      if (shouldSetCookie) {
+        headers.append('Set-Cookie', buildLanguageCookie(language));
+      }
+      return new Response(null, { status: 302, headers });
+    }
 
     const response = await fetch(request);
+    if (!shouldSetCookie) {
+      return response;
+    }
+
     const headers = new Headers(response.headers);
-    headers.append(
-      'Set-Cookie',
-      `${languageCookie}=${encodeURIComponent(
-        language
-      )}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`
-    );
+    headers.append('Set-Cookie', buildLanguageCookie(language));
 
     return new Response(response.body, {
       status: response.status,

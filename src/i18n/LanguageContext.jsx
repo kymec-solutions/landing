@@ -53,9 +53,37 @@ const getNavigatorLanguage = () => {
   return null;
 };
 
+const getPathLanguage = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const pathname = window.location?.pathname?.toLowerCase() || '';
+  if (pathname === '/es' || pathname.startsWith('/es/')) {
+    return 'es';
+  }
+  if (pathname === '/en' || pathname.startsWith('/en/')) {
+    return 'en';
+  }
+
+  return null;
+};
+
+const getLanguagePath = (language, pathname) => {
+  const normalized = pathname || '/';
+  const stripped = normalized.replace(/^\/(es|en)(\/|$)/, '/');
+  const base = `/${language}`;
+  return stripped === '/' ? `${base}/` : `${base}${stripped}`;
+};
+
 const getInitialLanguage = () => {
   if (typeof window === 'undefined') {
     return fallbackLanguage;
+  }
+
+  const pathLanguage = getPathLanguage();
+  if (pathLanguage && availableLanguages.includes(pathLanguage)) {
+    return pathLanguage;
   }
 
   try {
@@ -89,7 +117,17 @@ export function LanguageProvider({ children }) {
     setLanguage(prev => {
       const currentIndex = availableLanguages.indexOf(prev);
       const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % availableLanguages.length;
-      return availableLanguages[nextIndex];
+      const nextLanguage = availableLanguages[nextIndex];
+
+      if (typeof window !== 'undefined') {
+        const { pathname, search, hash } = window.location;
+        const nextPath = getLanguagePath(nextLanguage, pathname);
+        if (nextPath !== pathname) {
+          window.location.assign(`${nextPath}${search}${hash}`);
+        }
+      }
+
+      return nextLanguage;
     });
   };
 
