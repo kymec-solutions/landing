@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://kymec.com/sitemap.xml
