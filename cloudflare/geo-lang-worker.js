@@ -59,6 +59,7 @@ const getPathLanguage = pathname => {
 };
 
 const shouldRedirectToLanguage = pathname => pathname === '/' || pathname === '/index.html';
+const shouldNormalizeTrailingSlash = pathname => pathname === '/es' || pathname === '/en';
 
 const buildLanguageCookie = language =>
   `${languageCookie}=${encodeURIComponent(language)}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
@@ -78,6 +79,15 @@ export default {
     const geoLanguage = spanishCountries.has(country) ? 'es' : 'en';
     const language = pathLanguage || cookieLanguage || geoLanguage;
     const shouldSetCookie = !cookieLanguage || (pathLanguage && pathLanguage !== cookieLanguage);
+
+    if (pathLanguage && shouldNormalizeTrailingSlash(url.pathname)) {
+      url.pathname = `/${pathLanguage}/`;
+      const headers = new Headers({ Location: url.toString() });
+      if (shouldSetCookie) {
+        headers.append('Set-Cookie', buildLanguageCookie(pathLanguage));
+      }
+      return new Response(null, { status: 301, headers });
+    }
 
     if (!pathLanguage && shouldRedirectToLanguage(url.pathname)) {
       url.pathname = `/${language}/`;
