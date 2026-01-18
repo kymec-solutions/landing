@@ -76,6 +76,37 @@ const getLanguagePath = (language, pathname) => {
   return stripped === '/' ? `${base}/` : `${base}${stripped}`;
 };
 
+const storeLanguagePreference = language => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(languageCookie, language);
+  } catch (error) {
+    // Ignore storage access issues.
+  }
+
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.documentElement.lang = language;
+
+  const attributes = [
+    `${languageCookie}=${encodeURIComponent(language)}`,
+    'Path=/',
+    'Max-Age=31536000',
+    'SameSite=Lax'
+  ];
+
+  if (window.location?.protocol === 'https:') {
+    attributes.push('Secure');
+  }
+
+  document.cookie = attributes.join('; ');
+};
+
 const getInitialLanguage = () => {
   if (typeof window === 'undefined') {
     return fallbackLanguage;
@@ -123,7 +154,9 @@ export function LanguageProvider({ children }) {
         const { pathname, search, hash } = window.location;
         const nextPath = getLanguagePath(nextLanguage, pathname);
         if (nextPath !== pathname) {
+          storeLanguagePreference(nextLanguage);
           window.location.assign(`${nextPath}${search}${hash}`);
+          return prev;
         }
       }
 
@@ -132,28 +165,7 @@ export function LanguageProvider({ children }) {
   };
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(languageCookie, language);
-    } catch (error) {
-      // Ignore storage access issues.
-    }
-
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = language;
-
-      const attributes = [
-        `${languageCookie}=${encodeURIComponent(language)}`,
-        'Path=/',
-        'Max-Age=31536000',
-        'SameSite=Lax'
-      ];
-
-      if (window.location?.protocol === 'https:') {
-        attributes.push('Secure');
-      }
-
-      document.cookie = attributes.join('; ');
-    }
+    storeLanguagePreference(language);
   }, [language]);
 
   return (
